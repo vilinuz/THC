@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: trading-bot-service
+spec:
+  selector:
+    app: trading-bot
+  ports:
+  - protocol: TCP
+    port: 8080
+    targetPort: 8080
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+spec:
+  selector:
+    app: redis
+  ports:
+  - protocol: TCP
+    port: 6379
+    targetPort: 6379
+  type: ClusterIP

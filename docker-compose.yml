@@ -1,0 +1,72 @@
+version: '3.8'
+
+services:
+  trading-bot:
+    build: .
+    container_name: crypto-trading-bot
+    restart: unless-stopped
+    environment:
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./reports:/app/reports
+      - ./config.yaml:/app/config.yaml
+    depends_on:
+      - redis
+      - duckdb
+    networks:
+      - trading-network
+    command: python main.py --mode daemon
+
+  redis:
+    image: redis:7-alpine
+    container_name: trading-redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    networks:
+      - trading-network
+    command: redis-server --appendonly yes
+
+  duckdb:
+    image: python:3.11-slim
+    container_name: trading-duckdb
+    restart: unless-stopped
+    volumes:
+      - ./data:/data
+    networks:
+      - trading-network
+    command: tail -f /dev/null
+
+  dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile.dashboard
+    container_name: trading-dashboard
+    restart: unless-stopped
+    ports:
+      - "8050:8050"
+    environment:
+      - REDIS_HOST=redis
+      - DATABASE_PATH=/data/market.duckdb
+    volumes:
+      - ./data:/data
+    depends_on:
+      - redis
+      - trading-bot
+    networks:
+      - trading-network
+
+volumes:
+  redis-data:
+
+networks:
+  trading-network:
+    driver: bridge

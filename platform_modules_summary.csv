@@ -1,0 +1,32 @@
+Category,Module,Filepath,Lines,Description
+root,requirements.txt,requirements.txt,60,N/A
+root,config.yaml,config.yaml,146,N/A
+data_fetchers,base_fetcher.py,data_fetchers/base_fetcher.py,34,Base data fetcher abstract class
+data_fetchers,binance_fetcher.py,data_fetchers/binance_fetcher.py,66,Binance data fetcher implementation
+database,duckdb_manager.py,database/duckdb_manager.py,138,DuckDB database manager for market data storage
+cache,redis_manager.py,cache/redis_manager.py,104,Redis cache manager for distributed caching
+indicators,vwap.py,indicators/vwap.py,53,VWAP (Volume Weighted Average Price) Indicator
+indicators,ema.py,indicators/ema.py,63,EMA (Exponential Moving Average) Indicator
+indicators,rsi.py,indicators/rsi.py,74,RSI (Relative Strength Index) Indicator
+indicators,ichimoku.py,indicators/ichimoku.py,101,Ichimoku Cloud Indicator
+ml_models,feature_engineer.py,ml_models/feature_engineer.py,125,Feature engineering for ML models
+ml_models,xgboost_model.py,ml_models/xgboost_model.py,94,XGBoost model for price prediction and signal generation
+optimization,bayesian_optimizer.py,optimization/bayesian_optimizer.py,69,Bayesian optimization for strategy parameters
+optimization,walk_forward.py,optimization/walk_forward.py,112,Walk-forward optimization and analysis
+strategies,base_strategy.py,strategies/base_strategy.py,58,Base strategy class
+root,Dockerfile,Dockerfile,27,N/A
+root,docker-compose.yml,docker-compose.yml,72,N/A
+k8s,deployment.yaml,k8s/deployment.yaml,55,N/A
+k8s,service.yaml,k8s/service.yaml,25,N/A
+k8s,redis-deployment.yaml,k8s/redis-deployment.yaml,46,N/A
+root,.env.example,.env.example,16,N/A
+root,.gitignore,.gitignore,39,N/A
+root,main.py,main.py,275,Main entry point for the crypto trading platform
+signal_generator,signal_aggregator.py,signal_generator/signal_aggregator.py,80,Aggregate signals from multiple sources
+backtesting,backtest_engine.py,backtesting/backtest_engine.py,83,Backtesting engine for trading strategies
+backtesting,performance_metrics.py,backtesting/performance_metrics.py,70,Performance metrics calculation
+utils,logger.py,utils/logger.py,30,Logging configuration
+utils,config_loader.py,utils/config_loader.py,34,Configuration loader
+daemon,trading_daemon.py,daemon/trading_daemon.py,63,Trading daemon for continuous operation
+reporting,pdf_generator.py,reporting/pdf_generator.py,111,PDF report generation
+root,README.md,README.md,311,N/A

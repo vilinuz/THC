@@ -1,0 +1,59 @@
+python-binance==1.0.19
+ccxt==4.2.0
+yfinance==0.2.36
+pandas==2.2.0
+numpy==1.26.3
+scipy==1.12.0
+
+# Technical Analysis
+ta-lib==0.4.28
+pandas-ta==0.3.14b
+streaming-indicators==1.0.0
+smartmoneyconcepts==0.1.3
+
+# Machine Learning / AI
+xgboost==2.0.3
+scikit-learn==1.4.0
+tensorflow==2.15.0
+torch==2.2.0
+optuna==3.5.0
+bayesian-optimization==1.4.3
+
+# LLM Integration
+openai==1.12.0
+langchain==0.1.9
+transformers==4.37.2
+
+# Database & Cache
+duckdb==0.10.0
+pyarrow==15.0.0
+redis==5.0.1
+redis-py-cluster==2.1.3
+
+# Backtesting
+backtrader==1.9.78.123
+vectorbt==0.26.0
+
+# Reporting & Visualization
+matplotlib==3.8.2
+seaborn==0.13.2
+plotly==5.18.0
+fpdf2==2.7.7
+reportlab==4.1.0
+kaleido==0.2.1
+
+# API & Web
+fastapi==0.109.2
+uvicorn==0.27.1
+pydantic==2.6.1
+python-dotenv==1.0.1
+requests==2.31.0
+aiohttp==3.9.3
+
+# Utilities
+PyYAML==6.0.1
+python-daemon==3.0.1
+schedule==1.2.1
+tenacity==8.2.3
+python-json-logger==2.0.7
+tqdm==4.66.1
