@@ -27,6 +27,7 @@ from reporting.pdf_generator import PDFReportGenerator
 from daemon.trading_daemon import TradingDaemon
 from utils.logger import setup_logger
 from utils.config_loader import load_config
+from sentiment_analysis.social_sentiment import SocialSentimentAnalyzer
 
 logger = setup_logger(__name__)
 
@@ -127,6 +128,13 @@ class CryptoTradingPlatform:
             
         return indicators
         
+    def generate_sentiment_report(self):
+        analyzer = SocialSentimentAnalyzer()
+        results, anomalies = analyzer.run_sentiment_analysis(
+            keywords=['bitcoin', 'ethereum'],
+            days=1,
+            output_pdf='crypto_sentiment_report.pdf'
+)
     def run_backtest(self, symbol: str, timeframe: str = '1h'):
         """Run backtesting on historical data"""
         logger.info(f"Running backtest for {symbol} on {timeframe}")
