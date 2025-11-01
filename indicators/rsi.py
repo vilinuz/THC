@@ -34,7 +34,8 @@ class RSI:
         signals[(rsi < overbought) & (rsi.shift(1) >= overbought)] = -1
         
         return signals
-    #not sure if Divergence Window works well with value of 14
+    
+    #not sure if Divergence Window works well with value of 14  
     @staticmethod
     def divergence(df: pd.DataFrame, rsi: pd.Series, window: int = 14) -> pd.DataFrame:
         """
