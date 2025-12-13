@@ -17,6 +17,7 @@ from indicators.vwap import VWAP
 from indicators.ema import EMA
 from indicators.rsi import RSI
 from indicators.ichimoku import Ichimoku
+from indicators.gigi_strategy import GigiStrategy
 from indicators.sm.smc_wrapper import SMCWrapper
 from ml.feature_engineer import FeatureEngineer
 from ml.xgboost_model import XGBoostModel
@@ -142,7 +143,20 @@ class CryptoTradingPlatform:
                     indicators[f'smc_{key}'] = data
             except Exception as e:
                 logger.error(f"Error calculating SMC indicators: {e}")
-            
+
+        # Gigi's Strategy
+        if self.config.get('gigi_strategy', {}).get('enabled', False):
+            logger.info("  Calculating Gigi's Context RSI Strategy...")
+            try:
+                gigi = GigiStrategy(self.config['gigi_strategy'])
+                gigi_results = gigi.calculate(df)
+                
+                # Add columns to indicators
+                for col in gigi_results.columns:
+                    indicators[f'gigi_{col}'] = gigi_results[col]
+            except Exception as e:
+                logger.error(f"Error calculating Gigi's strategy: {e}")
+
         return indicators
         
     def generate_sentiment_report(self):
@@ -167,10 +181,27 @@ class CryptoTradingPlatform:
         
         # Train ML model
         xgb_model = XGBoostModel(self.config['ml_models']['xgboost'])
-        labels = xgb_model.prepare_labels(df, horizon=5, threshold=0.001)
+        
+        # Prepare labels (Pump Detection if enabled)
+        pump_config = self.config['ml_models'].get('pump_detection', {'enabled': False, 'horizon': 5, 'threshold': 0.001})
+        horizon = pump_config['horizon']
+        threshold = pump_config['threshold']
+        
+        logger.info(f"Training ML Model with Horizon={horizon}, Threshold={threshold:.2%}")
+        labels = xgb_model.prepare_labels(df, horizon=horizon, threshold=threshold)
         
         # Align features and labels
         common_index = features.index.intersection(labels.index)
+        
+        logger.info(f"DF Length: {len(df)}")
+        logger.info(f"Features Length: {len(features)}")
+        logger.info(f"Labels Length: {len(labels)}")
+        logger.info(f"Common Index Length: {len(common_index)}")
+        
+        if len(common_index) == 0:
+            logger.error("No common index between features and labels! Aborting training.")
+            return {'error': 'No data'}
+            
         X = features.loc[common_index]
         y = labels.loc[common_index]
         

@@ -39,15 +39,15 @@ class MarketStructure:
         for i in range(swing_length, len(df_copy) - swing_length):
             window = df_copy['high'].iloc[i-swing_length:i+swing_length+1]
             if df_copy['high'].iloc[i] == window.max():
-                result['swing_high'].iloc[i] = True
-                result['swing_high_price'].iloc[i] = df_copy['high'].iloc[i]
+                result.loc[result.index[i], 'swing_high'] = True
+                result.loc[result.index[i], 'swing_high_price'] = df_copy['high'].iloc[i]
                 
         # Identify swing lows
         for i in range(swing_length, len(df_copy) - swing_length):
             window = df_copy['low'].iloc[i-swing_length:i+swing_length+1]
             if df_copy['low'].iloc[i] == window.min():
-                result['swing_low'].iloc[i] = True
-                result['swing_low_price'].iloc[i] = df_copy['low'].iloc[i]
+                result.loc[result.index[i], 'swing_low'] = True
+                result.loc[result.index[i], 'swing_low_price'] = df_copy['low'].iloc[i]
                 
         return result
         
@@ -85,15 +85,15 @@ class MarketStructure:
                         # Higher high
                         if current_trend == 1:
                             # Continuation - BOS
-                            result['bullish_bos'].iloc[i] = True
+                            result.loc[result.index[i], 'bullish_bos'] = True
                         else:
                             # Reversal - CHoCH
-                            result['bullish_choch'].iloc[i] = True
+                            result.loc[result.index[i], 'bullish_choch'] = True
                             current_trend = 1
                     else:
                         # Lower high - potential reversal
                         if current_trend == 1:
-                            result['bearish_choch'].iloc[i] = True
+                            result.loc[result.index[i], 'bearish_choch'] = True
                             current_trend = -1
                             
                 prev_swing_high = new_high
@@ -107,20 +107,20 @@ class MarketStructure:
                         # Lower low
                         if current_trend == -1:
                             # Continuation - BOS
-                            result['bearish_bos'].iloc[i] = True
+                            result.loc[result.index[i], 'bearish_bos'] = True
                         else:
                             # Reversal - CHoCH
-                            result['bearish_choch'].iloc[i] = True
+                            result.loc[result.index[i], 'bearish_choch'] = True
                             current_trend = -1
                     else:
                         # Higher low - potential reversal
                         if current_trend == -1:
-                            result['bullish_choch'].iloc[i] = True
+                            result.loc[result.index[i], 'bullish_choch'] = True
                             current_trend = 1
                             
                 prev_swing_low = new_low
                 
-            result['trend'].iloc[i] = current_trend
+            result.loc[result.index[i], 'trend'] = current_trend
             
         return result
         

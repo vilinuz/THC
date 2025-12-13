@@ -57,10 +57,10 @@ class OrderBlocks:
                         ) / df_copy['low'].iloc[j]
                         
                         if impulse_strength > 0.02:  # 2% minimum impulse
-                            result['bullish_ob'].iloc[j] = True
-                            result['ob_top'].iloc[j] = df_copy['high'].iloc[j]
-                            result['ob_bottom'].iloc[j] = df_copy['low'].iloc[j]
-                            result['ob_strength'].iloc[j] = impulse_strength
+                            result.loc[result.index[j], 'bullish_ob'] = True
+                            result.loc[result.index[j], 'ob_top'] = df_copy['high'].iloc[j]
+                            result.loc[result.index[j], 'ob_bottom'] = df_copy['low'].iloc[j]
+                            result.loc[result.index[j], 'ob_strength'] = impulse_strength
                             break
                             
         # Detect bearish order blocks
@@ -77,10 +77,10 @@ class OrderBlocks:
                         ) / df_copy['high'].iloc[j]
                         
                         if impulse_strength > 0.02:  # 2% minimum impulse
-                            result['bearish_ob'].iloc[j] = True
-                            result['ob_top'].iloc[j] = df_copy['high'].iloc[j]
-                            result['ob_bottom'].iloc[j] = df_copy['low'].iloc[j]
-                            result['ob_strength'].iloc[j] = impulse_strength
+                            result.loc[result.index[j], 'bearish_ob'] = True
+                            result.loc[result.index[j], 'ob_top'] = df_copy['high'].iloc[j]
+                            result.loc[result.index[j], 'ob_bottom'] = df_copy['low'].iloc[j]
+                            result.loc[result.index[j], 'ob_strength'] = impulse_strength
                             break
                             
         return result

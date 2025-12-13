@@ -119,4 +119,4 @@ class FeatureEngineer:
             )
             all_features = pd.concat([all_features, lag_features], axis=1)
 
-        return all_features.dropna()
+        return all_features

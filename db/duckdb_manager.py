@@ -62,13 +62,18 @@ class DuckDBManager:
     def save_ohlcv(self, df: pd.DataFrame, symbol: str, timeframe: str):
         """Save OHLCV data to both parquet and database"""
         # Save to parquet
-        parquet_path = self.parquet_dir / f"{symbol}_{timeframe}.parquet"
+        safe_symbol = symbol.replace('/', '-')
+        parquet_path = self.parquet_dir / f"{safe_symbol}_{timeframe}.parquet"
         df.to_parquet(parquet_path, index=True)
 
         # Also update database
         df_copy = df.reset_index()
         df_copy['symbol'] = symbol
         df_copy['timeframe'] = timeframe
+        
+        # Ensure column order matches table schema
+        # Schema: symbol, timestamp, timeframe, open, high, low, close, volume
+        df_copy = df_copy[['symbol', 'timestamp', 'timeframe', 'open', 'high', 'low', 'close', 'volume']]
 
         self.conn.execute("""
             INSERT OR REPLACE INTO ohlcv
@@ -83,7 +88,8 @@ class DuckDBManager:
         end_date: Optional[str] = None
     ) -> pd.DataFrame:
         """Load OHLCV data from parquet (faster) or database"""
-        parquet_path = self.parquet_dir / f"{symbol}_{timeframe}.parquet"
+        safe_symbol = symbol.replace('/', '-')
+        parquet_path = self.parquet_dir / f"{safe_symbol}_{timeframe}.parquet"
 
         if parquet_path.exists():
             df = pd.read_parquet(parquet_path)

@@ -53,10 +53,10 @@ class FairValueGap:
                 if gap_size >= min_gap_size:
                     # Check if middle candle doesn't fill it
                     if candle_2['low'] > gap_low:
-                        result['bullish_fvg'].iloc[i] = True
-                        result['fvg_bottom'].iloc[i] = gap_low
-                        result['fvg_top'].iloc[i] = gap_high
-                        result['fvg_size'].iloc[i] = gap_size
+                        result.loc[result.index[i], 'bullish_fvg'] = True
+                        result.loc[result.index[i], 'fvg_bottom'] = gap_low
+                        result.loc[result.index[i], 'fvg_top'] = gap_high
+                        result.loc[result.index[i], 'fvg_size'] = gap_size
                         
             # Bearish FVG: Gap between candle 1 low and candle 3 high
             gap_low = candle_3['high']
@@ -68,10 +68,10 @@ class FairValueGap:
                 if gap_size >= min_gap_size:
                     # Check if middle candle doesn't fill it
                     if candle_2['high'] < gap_high:
-                        result['bearish_fvg'].iloc[i] = True
-                        result['fvg_bottom'].iloc[i] = gap_low
-                        result['fvg_top'].iloc[i] = gap_high
-                        result['fvg_size'].iloc[i] = gap_size
+                        result.loc[result.index[i], 'bearish_fvg'] = True
+                        result.loc[result.index[i], 'fvg_bottom'] = gap_low
+                        result.loc[result.index[i], 'fvg_top'] = gap_high
+                        result.loc[result.index[i], 'fvg_size'] = gap_size
                         
         # Mark filled FVGs
         for i in range(len(result)):
@@ -80,7 +80,7 @@ class FairValueGap:
                 # Check if any future candle fills it
                 for j in range(i+1, len(df_copy)):
                     if df_copy['low'].iloc[j] <= fvg_bottom:
-                        result['fvg_filled'].iloc[i] = True
+                        result.loc[result.index[i], 'fvg_filled'] = True
                         break
                         
             if result['bearish_fvg'].iloc[i]:
@@ -88,7 +88,7 @@ class FairValueGap:
                 # Check if any future candle fills it
                 for j in range(i+1, len(df_copy)):
                     if df_copy['high'].iloc[j] >= fvg_top:
-                        result['fvg_filled'].iloc[i] = True
+                        result.loc[result.index[i], 'fvg_filled'] = True
                         break
                         
         return result

@@ -51,9 +51,9 @@ class Liquidity:
             ]
             
             if len(similar_highs) >= 2:  # At least 2 equal highs
-                result['buy_side_liquidity'].iloc[i] = True
-                result['liquidity_level'].iloc[i] = current_high
-                result['liquidity_strength'].iloc[i] = len(similar_highs)
+                result.loc[result.index[i], 'buy_side_liquidity'] = True
+                result.loc[result.index[i], 'liquidity_level'] = current_high
+                result.loc[result.index[i], 'liquidity_strength'] = len(similar_highs)
                 
         # Detect equal lows (sell-side liquidity)
         for i in range(swing_length, len(df_copy)):
@@ -67,9 +67,9 @@ class Liquidity:
             ]
             
             if len(similar_lows) >= 2:  # At least 2 equal lows
-                result['sell_side_liquidity'].iloc[i] = True
-                result['liquidity_level'].iloc[i] = current_low
-                result['liquidity_strength'].iloc[i] = len(similar_lows)
+                result.loc[result.index[i], 'sell_side_liquidity'] = True
+                result.loc[result.index[i], 'liquidity_level'] = current_low
+                result.loc[result.index[i], 'liquidity_strength'] = len(similar_lows)
                 
         return result
         
@@ -103,8 +103,8 @@ class Liquidity:
                 if current_candle['high'] > liq_level:
                     # Check for reversal (close back below)
                     if current_candle['close'] < liq_level:
-                        sweeps['buy_side_sweep'].iloc[i] = True
-                        sweeps['sweep_strength'].iloc[i] = liq['liquidity_strength']
+                        sweeps.loc[sweeps.index[i], 'buy_side_sweep'] = True
+                        sweeps.loc[sweeps.index[i], 'sweep_strength'] = liq['liquidity_strength']
                         break
                         
             # Check for sell-side liquidity sweeps
@@ -117,8 +117,8 @@ class Liquidity:
                 if current_candle['low'] < liq_level:
                     # Check for reversal (close back above)
                     if current_candle['close'] > liq_level:
-                        sweeps['sell_side_sweep'].iloc[i] = True
-                        sweeps['sweep_strength'].iloc[i] = liq['liquidity_strength']
+                        sweeps.loc[sweeps.index[i], 'sell_side_sweep'] = True
+                        sweeps.loc[sweeps.index[i], 'sweep_strength'] = liq['liquidity_strength']
                         break
                         
         return sweeps

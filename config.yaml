@@ -13,8 +13,8 @@ assets:
 data_sources:
   binance:
     enabled: true
-    api_key: ${BINANCE_API_KEY}
-    api_secret: ${BINANCE_API_SECRET}
+    # api_key: ${BINANCE_API_KEY}
+    # api_secret: ${BINANCE_API_SECRET}
     testnet: true
   yfinance:
     enabled: true
@@ -35,7 +35,7 @@ cache:
   max_connections: 10
 
  # Indicators Configuration
- indicators:
+indicators:
    vwap:
      enabled: true
    ema:
@@ -59,8 +59,8 @@ cache:
      kijun_period: 26
      senkou_b_period: 52
  
- # Smart Money Concepts
- smart_money:
+# Smart Money Concepts
+smart_money:
    enabled: true
    order_blocks: true
    liquidity: true
@@ -82,6 +82,10 @@ ml_models:
     provider: openai
     model: gpt-4-turbo
     api_key: ${OPENAI_API_KEY}
+  pump_detection:
+    enabled: true
+    horizon: 5
+    threshold: 0.02 # 2% gain
 
 # Optimization
 optimization:
@@ -109,6 +113,39 @@ strategies:
     enabled: true
     timeframe: 15m
     min_signal_strength: 0.65
+  gigi_strategy:
+    enabled: true
+    rsi_len: 14
+    rsi_buy_level: 30
+    rsi_sell_level: 60
+    wick_ratio_min: 0.3
+    sell_wick_ratio_min: 0.1
+    vol_len: 20
+    use_vol_filter: false
+    atr_len: 20
+    swing_buy_len: 3
+    swing_sell_len: 5
+    use_bounce_filter: true
+    bounce_lookahead: 20
+    bounce_atr_mult: 4.0
+    min_bars_between_buys: 40
+    enable_pullback_buys: true
+    rsi_pullback_level: 70.0
+    trend_ema_len: 50
+    require_trend_up: true
+    use_pivot_sells: true
+    sell_scan_bars: 16
+    sell_require_profit: true
+    sell_rsi_soft_level: 55.0
+    buy_near_low_atr_mult: 0.15
+    use_wick_atr_floor: true
+    min_lower_wick_atr_mult: 0.05
+    use_sell_wick_atr_floor: true
+    min_upper_wick_atr_mult: 0.05
+    sell_near_high_atr_mult: 0.15
+    near_peak_atr_mult: 0.25
+    min_bars_in_trade: 10
+    peak_hold_bars: 4
 
 # Risk Management
 risk:
