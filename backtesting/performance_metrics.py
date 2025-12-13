@@ -3,6 +3,7 @@ Performance metrics calculation
 """
 import pandas as pd
 import numpy as np
+from typing import Dict, List, Any
 
 class PerformanceMetrics:
     """Calculate trading performance metrics"""

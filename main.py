@@ -11,20 +11,21 @@ import sys
 
 # Import modules
 from data_fetchers.binance_fetcher import BinanceFetcher
-from database.duckdb_manager import DuckDBManager
+from db.duckdb_manager import DuckDBManager
 from cache.redis_manager import RedisManager
 from indicators.vwap import VWAP
 from indicators.ema import EMA
 from indicators.rsi import RSI
 from indicators.ichimoku import Ichimoku
-from ml_models.feature_engineer import FeatureEngineer
-from ml_models.xgboost_model import XGBoostModel
-from optimization.bayesian_optimizer import BayesianOptimizer
-from optimization.walk_forward import WalkForwardOptimizer
-from signal.signal_aggregator import SignalAggregator
+from indicators.sm.smc_wrapper import SMCWrapper
+from ml.feature_engineer import FeatureEngineer
+from ml.xgboost_model import XGBoostModel
+from ml.bayesian_optimizer import BayesianOptimizer
+from ml.walk_forward import WalkForwardOptimizer
+from signals.signal_aggregator import SignalAggregator
 from backtesting.backtest_engine import BacktestEngine
 from reporting.pdf_generator import PDFReportGenerator
-from daemon.trading_daemon import TradingDaemon
+from trader_daemon.trading_daemon import TradingDaemon
 from utils.logger import setup_logger
 from utils.config_loader import load_config
 from sentiment_analysis.social_sentiment import SocialSentimentAnalyzer
@@ -125,6 +126,22 @@ class CryptoTradingPlatform:
                 ich_config['senkou_b_period']
             )
             indicators['ichimoku_signal'] = Ichimoku.signals(df, indicators['ichimoku'])
+            
+            indicators['ichimoku_signal'] = Ichimoku.signals(df, indicators['ichimoku'])
+            
+        # Smart Money Concepts
+        if self.config.get('smart_money', {}).get('enabled', False):
+            logger.info("  Calculating Smart Money Concepts...")
+            try:
+                smc = SMCWrapper(use_library=True)
+                smc_results = smc.comprehensive_analysis(df)
+                
+                # Flatten SMC results into indicators dict for FeatureEngineer
+                for key, data in smc_results.items():
+                    # Prefix keys to avoid collisions
+                    indicators[f'smc_{key}'] = data
+            except Exception as e:
+                logger.error(f"Error calculating SMC indicators: {e}")
             
         return indicators
         

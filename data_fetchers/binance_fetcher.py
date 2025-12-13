@@ -60,4 +60,4 @@ class BinanceFetcher(BaseDataFetcher):
                 'timestamp': datetime.fromtimestamp(ticker['timestamp'] / 1000)
             }
         except Exception as e:
-            raise Exception(f"Error fetching real-time data: {e}"):
+            raise Exception(f"Error fetching real-time data: {e}")

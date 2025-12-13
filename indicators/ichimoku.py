@@ -82,7 +82,7 @@ class Ichimoku:
 
         # Strong bearish signal: TK cross below cloud in bearish cloud
         signals[tk_bearish_cross & price_below_cloud & ~cloud_bullish] = -1
-         170 │         return signals
+        return signals
 
     @staticmethod
     def cloud_strength(ichimoku_df: pd.DataFrame) -> pd.Series:

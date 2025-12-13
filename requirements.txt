@@ -1,21 +1,21 @@
 python-binance==1.0.19
-ccxt==4.2.0
+ccxt
 yfinance==0.2.36
 pandas==2.2.0
 numpy==1.26.3
 scipy==1.12.0
 
 # Technical Analysis
-ta-lib==0.4.28
-pandas-ta==0.3.14b
-streaming-indicators==1.0.0
-smartmoneyconcepts==0.1.3
+# ta-lib==0.4.28
+# pandas-ta
+# streaming-indicators==1.0.0
+# smartmoneyconcepts
 
 # Machine Learning / AI
 xgboost==2.0.3
 scikit-learn==1.4.0
-tensorflow==2.15.0
-torch==2.2.0
+# tensorflow==2.15.0
+# torch==2.2.0
 optuna==3.5.0
 bayesian-optimization==1.4.3
 
@@ -23,12 +23,13 @@ bayesian-optimization==1.4.3
 openai==1.12.0
 langchain==0.1.9
 transformers==4.37.2
+textblob
 
 # Database & Cache
 duckdb==0.10.0
 pyarrow==15.0.0
 redis==5.0.1
-redis-py-cluster==2.1.3
+# redis-py-cluster==2.1.3
 
 # Backtesting
 backtrader==1.9.78.123
