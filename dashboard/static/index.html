@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Crypto Sentiment Dashboard</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Space Grotesk', sans-serif; }
+        .glass {
+            background: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .console-line { font-family: 'Courier New', monospace; }
+        /* Scrollbar */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #1f2937; }
+        ::-webkit-scrollbar-thumb { background: #4b5563; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #6b7280; }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#8b5cf6', // Violet
+                        secondary: '#ec4899', // Pink
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-900 text-white min-h-screen relative overflow-x-hidden selection:bg-primary selection:text-white">
+    
+    <!-- Background Gradients -->
+    <div class="fixed top-0 left-0 w-full h-full overflow-hidden pointer-events-none z-0">
+        <div class="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary opacity-20 blur-[120px] rounded-full"></div>
+        <div class="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary opacity-20 blur-[120px] rounded-full"></div>
+    </div>
+
+    <!-- Main Content -->
+    <div class="relative z-10 max-w-7xl mx-auto px-4 py-8">
+        
+        <!-- Header -->
+        <header class="flex justify-between items-center mb-10">
+            <div>
+                <h1 class="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+                    Sentiment AI
+                </h1>
+                <p class="text-gray-400 mt-1">Real-time Crypto Social Analysis & Anomaly Detection</p>
+            </div>
+            <div class="flex items-center space-x-4">
+                <span class="px-3 py-1 rounded-full text-xs font-semibold bg-green-500/10 text-green-400 border border-green-500/20">System Online</span>
+            </div>
+        </header>
+
+        <!-- Grid Layout -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            
+            <!-- Left Column: Config -->
+            <div class="lg:col-span-1 space-y-6">
+                <!-- Actions Card -->
+                <div class="glass rounded-2xl p-6 shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-100 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                        Actions
+                    </h2>
+                    
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm text-gray-400 mb-1">Keywords (comma sep)</label>
+                            <input type="text" id="keywords" value="bitcoin, ethereum, solana" class="w-full bg-gray-800/50 border border-gray-700 rounded-lg px-4 py-2 text-sm focus:outline-none focus:border-primary transition-colors">
+                        </div>
+                        
+                        <button onclick="startAnalysis()" id="startBtn" class="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white font-bold py-3 rounded-xl shadow-lg transform transition active:scale-95 flex justify-center items-center">
+                            <span>Start Analysis</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Config Editor -->
+                <div class="glass rounded-2xl p-6 shadow-xl">
+                    <h2 class="text-xl font-semibold mb-4 text-gray-100 flex items-center">
+                        <svg class="w-5 h-5 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                        Configuration
+                    </h2>
+                    <textarea id="configArea" class="w-full h-64 bg-gray-800/50 border border-gray-700 rounded-lg p-3 text-xs font-mono text-gray-300 focus:outline-none focus:border-primary resize-none"></textarea>
+                    <button onclick="saveConfig()" class="mt-4 w-full bg-gray-700 hover:bg-gray-600 text-white font-semibold py-2 rounded-lg transition-colors text-sm">
+                        Save Config
+                    </button>
+                </div>
+            </div>
+
+            <!-- Right Column: Console & Results -->
+            <div class="lg:col-span-2 space-y-6">
+                
+                <!-- Live Console -->
+                <div class="glass rounded-2xl p-6 shadow-xl h-[400px] flex flex-col">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-xl font-semibold text-gray-100 flex items-center">
+                            <svg class="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 9l3 3-3 3m5 0h3M5 20h14a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                            Live Event Stream
+                        </h2>
+                        <span id="statusIndicator" class="h-2 w-2 rounded-full bg-red-500 animate-pulse"></span>
+                    </div>
+                    <div id="console" class="flex-1 bg-black/40 rounded-lg p-4 overflow-y-auto console-line text-sm space-y-1">
+                        <div class="text-gray-500 italic"> waiting for events... </div>
+                    </div>
+                </div>
+
+                <!-- Results Area -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Sentiment Stats -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-medium text-gray-300 mb-2">Aggregate Sentiment</h3>
+                        <div id="aggResults" class="text-2xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-cyan-300">
+                            --
+                        </div>
+                        <p class="text-xs text-gray-500 mt-2">Compound Score & Percentages</p>
+                    </div>
+                    
+                    <!-- Anomaly Highlights -->
+                    <div class="glass rounded-2xl p-6">
+                        <h3 class="text-lg font-medium text-gray-300 mb-2">Report Highlights</h3>
+                        <div id="anomResults" class="text-sm text-gray-300 line-clamp-4">
+                            --
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script>
+        const consoleDiv = document.getElementById('console');
+        const statusInd = document.getElementById('statusIndicator');
+
+        // Load Config on Start
+        async function loadConfig() {
+            try {
+                const res = await fetch('/api/config');
+                const data = await res.json();
+                document.getElementById('configArea').value = JSON.stringify(data, null, 2);
+            } catch (e) {
+                logToConsole("ERROR: Failed to load config");
+            }
+        }
+
+        async function saveConfig() {
+            try {
+                const configStr = document.getElementById('configArea').value;
+                const config = JSON.parse(configStr);
+                const res = await fetch('/api/config', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify(config)
+                });
+                const result = await res.json();
+                logToConsole(`SYSTEM: ${result.message}`);
+            } catch (e) {
+                logToConsole(`ERROR: Invalid JSON or save failed`);
+            }
+        }
+
+        async function startAnalysis() {
+            const btn = document.getElementById('startBtn');
+            const keywords = document.getElementById('keywords').value.split(',').map(s => s.trim());
+            
+            btn.disabled = true;
+            btn.innerHTML = `<svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg> Processing...`;
+            
+            try {
+                const res = await fetch('/api/start', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ keywords })
+                });
+                logToConsole(`SYSTEM: Analysis started for [${keywords.join(', ')}]`);
+            } catch (e) {
+                logToConsole("ERROR: Failed to start analysis");
+                btn.disabled = false;
+                btn.innerText = "Start Analysis";
+            }
+            
+            // Re-enable button after some time or wait for 'COMPLETE' event
+            setTimeout(() => {
+                 btn.disabled = false;
+                 btn.innerText = "Start Analysis";
+            }, 5000);
+        }
+
+        function logToConsole(msg, type='INFO') {
+            const div = document.createElement('div');
+            let color = 'text-gray-300';
+            if (type === 'ERROR') color = 'text-red-400';
+            if (type === 'SUCCESS') color = 'text-green-400';
+            if (type === 'WARN') color = 'text-yellow-400';
+            
+            div.className = `${color} break-all`;
+            div.innerText = `> ${msg}`;
+            consoleDiv.appendChild(div);
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+        }
+
+        // SSE connection
+        const evtSource = new EventSource("/api/events");
+        
+        evtSource.onopen = () => {
+            statusInd.classList.remove('bg-red-500');
+            statusInd.classList.add('bg-green-500');
+            logToConsole("SYSTEM: Connected to Event Stream", "SUCCESS");
+        };
+
+        evtSource.onmessage = (e) => {
+            try {
+                const packet = JSON.parse(e.data);
+                const { event, data } = packet;
+
+                if (event === 'RESULT_AGG') {
+                    // Update stats
+                    const agg = JSON.parse(data);
+                    document.getElementById('aggResults').innerHTML = `
+                        Score: <span class="${agg.avg_compound > 0 ? 'text-green-400' : 'text-red-400'}">${agg.avg_compound.toFixed(4)}</span><br>
+                        <span class="text-sm text-gray-400">Pos: ${(agg.positive_pct*100).toFixed(1)}% | Neg: ${(agg.negative_pct*100).toFixed(1)}%</span>
+                    `;
+                    logToConsole("Aggregated sentiment updated.", "SUCCESS");
+                } else if (event === 'RESULT_ANOM') {
+                    document.getElementById('anomResults').innerText = data;
+                } else {
+                    // Log normal events
+                    let type = 'INFO';
+                    if (event === 'ERROR') type = 'ERROR';
+                    if (event === 'COMPLETE') type = 'SUCCESS';
+                    logToConsole(`[${event}] ${data}`, type);
+                }
+            } catch (err) {
+                console.error(err);
+            }
+        };
+
+        evtSource.onerror = () => {
+             statusInd.classList.remove('bg-green-500');
+             statusInd.classList.add('bg-red-500');
+        };
+
+        // Init
+        loadConfig();
+
+    </script>
+</body>
+</html>

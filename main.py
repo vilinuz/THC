@@ -10,26 +10,30 @@ from datetime import datetime, timedelta
 import sys
 
 # Import modules
-from data_fetchers.binance_fetcher import BinanceFetcher
-from db.duckdb_manager import DuckDBManager
-from cache.redis_manager import RedisManager
-from indicators.vwap import VWAP
-from indicators.ema import EMA
-from indicators.rsi import RSI
-from indicators.ichimoku import Ichimoku
-from indicators.gigi_strategy import GigiStrategy
-from indicators.sm.smc_wrapper import SMCWrapper
-from ml.feature_engineer import FeatureEngineer
-from ml.xgboost_model import XGBoostModel
-from ml.bayesian_optimizer import BayesianOptimizer
-from ml.walk_forward import WalkForwardOptimizer
-from signals.signal_aggregator import SignalAggregator
-from backtesting.backtest_engine import BacktestEngine
-from reporting.pdf_generator import PDFReportGenerator
-from trader_daemon.trading_daemon import TradingDaemon
+from sentiment_analysis.social_sentiment import SocialSentimentAnalyzer
 from utils.logger import setup_logger
 from utils.config_loader import load_config
-from sentiment_analysis.social_sentiment import SocialSentimentAnalyzer
+
+# Lazy imports moved to setup_components
+# from data_fetchers.binance_fetcher import BinanceFetcher
+# from db.duckdb_manager import DuckDBManager
+# from cache.redis_manager import RedisManager
+
+# Lazy imports for heavy ML/Backtesting libs
+# from indicators.vwap import VWAP
+# from indicators.ema import EMA
+# from indicators.rsi import RSI
+# from indicators.ichimoku import Ichimoku
+# from indicators.gigi_strategy import GigiStrategy
+# from indicators.sm.smc_wrapper import SMCWrapper
+# from ml.feature_engineer import FeatureEngineer
+# from ml.xgboost_model import XGBoostModel
+# from ml.bayesian_optimizer import BayesianOptimizer
+# from ml.walk_forward import WalkForwardOptimizer
+# from signals.signal_aggregator import SignalAggregator
+# from backtesting.backtest_engine import BacktestEngine
+# from reporting.pdf_generator import PDFReportGenerator
+# from trader_daemon.trading_daemon import TradingDaemon
 
 logger = setup_logger(__name__)
 
@@ -44,6 +48,11 @@ class CryptoTradingPlatform:
         """Initialize all platform components"""
         logger.info("Initializing platform components...")
         
+        # Lazy imports
+        from data_fetchers.binance_fetcher import BinanceFetcher
+        from db.duckdb_manager import DuckDBManager
+        from cache.redis_manager import RedisManager
+
         # Database
         self.db = DuckDBManager(
             self.config['database']['path'],
@@ -51,19 +60,24 @@ class CryptoTradingPlatform:
         )
         
         # Cache
-        self.cache = RedisManager(
-            host=self.config['cache']['host'],
-            port=self.config['cache']['port'],
-            db=self.config['cache']['db'],
-            ttl=self.config['cache']['ttl']
-        )
+        try:
+            self.cache = RedisManager(
+                host=self.config['cache']['host'],
+                port=self.config['cache']['port'],
+                db=self.config['cache']['db'],
+                ttl=self.config['cache']['ttl']
+            )
+        except Exception:
+            logger.warning("Redis not available, caching disabled")
+            self.cache = None
         
         # Data fetchers
         self.fetchers = {}
         if self.config['data_sources']['binance']['enabled']:
-            self.fetchers['binance'] = BinanceFetcher(
-                self.config['data_sources']['binance']
-            )
+            # self.fetchers['binance'] = BinanceFetcher(
+            #     self.config['data_sources']['binance']
+            # )
+            pass
             
         logger.info("Components initialized successfully")
         
@@ -95,6 +109,14 @@ class CryptoTradingPlatform:
         """Calculate all technical indicators"""
         logger.info("Calculating technical indicators...")
         
+        # Lazy imports
+        from indicators.vwap import VWAP
+        from indicators.ema import EMA
+        from indicators.rsi import RSI
+        from indicators.ichimoku import Ichimoku
+        from indicators.gigi_strategy import GigiStrategy
+        from indicators.sm.smc_wrapper import SMCWrapper
+
         indicators = {}
         
         # VWAP
@@ -126,8 +148,6 @@ class CryptoTradingPlatform:
                 ich_config['kijun_period'],
                 ich_config['senkou_b_period']
             )
-            indicators['ichimoku_signal'] = Ichimoku.signals(df, indicators['ichimoku'])
-            
             indicators['ichimoku_signal'] = Ichimoku.signals(df, indicators['ichimoku'])
             
         # Smart Money Concepts
@@ -170,6 +190,11 @@ class CryptoTradingPlatform:
         """Run backtesting on historical data"""
         logger.info(f"Running backtest for {symbol} on {timeframe}")
         
+        # Lazy imports
+        from ml.feature_engineer import FeatureEngineer
+        from ml.xgboost_model import XGBoostModel
+        from backtesting.backtest_engine import BacktestEngine
+
         # Load data
         df = self.db.load_ohlcv(symbol, timeframe)
         
@@ -234,6 +259,9 @@ class CryptoTradingPlatform:
         """Run walk-forward optimization"""
         logger.info("Running walk-forward optimization...")
         
+        # Lazy imports
+        from ml.walk_forward import WalkForwardOptimizer
+
         df = self.db.load_ohlcv(symbol, timeframe)
         
         # Define parameter bounds
@@ -272,6 +300,9 @@ class CryptoTradingPlatform:
         """Generate PDF report"""
         logger.info("Generating PDF report...")
         
+        # Lazy imports
+        from reporting.pdf_generator import PDFReportGenerator
+
         report_gen = PDFReportGenerator(self.config['reporting']['output_dir'])
         report_path = report_gen.generate(symbol, results)
         
@@ -282,19 +313,29 @@ class CryptoTradingPlatform:
         """Run platform as daemon/service"""
         logger.info("Starting daemon mode...")
         
+        # Lazy imports
+        from trader_daemon.trading_daemon import TradingDaemon
+
         daemon = TradingDaemon(self.config, self)
         await daemon.start()
 
 async def main():
     """Main entry point"""
     parser = argparse.ArgumentParser(description='Crypto Trading Platform')
-    parser.add_argument('--mode', choices=['backtest', 'daemon', 'optimize'], 
-                       default='backtest', help='Operation mode')
+    parser.add_argument('--mode', choices=['backtest', 'daemon', 'optimize', 'dashboard'], 
+                        default='backtest', help='Operation mode')
     parser.add_argument('--symbol', default='BTC/USDT', help='Trading symbol')
     parser.add_argument('--timeframe', default='1h', help='Timeframe')
     
     args = parser.parse_args()
     
+    # Handle Dashboard Mode separately
+    if args.mode == 'dashboard':
+        import uvicorn
+        logger.info("Starting Web Dashboard on port 8000...")
+        uvicorn.run("dashboard.app:app", host="0.0.0.0", port=8000, reload=True)
+        return
+
     # Initialize platform
     platform = CryptoTradingPlatform()
     
@@ -318,7 +359,7 @@ async def main():
             
         elif args.mode == 'daemon':
             await platform.run_daemon_mode()
-            
+
     except Exception as e:
         logger.error(f"Error in main execution: {e}", exc_info=True)
         sys.exit(1)
