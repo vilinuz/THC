@@ -1,0 +1,84 @@
+
+@app.get("/api/chart_data")
+async def get_chart_data():
+    """
+    Generate dummy OHLCV data + T3 + Signals for visualization
+    In a real app, this would fetch from DB or Exchange.
+    """
+    # Generate 100 bars of dummy uptrend/choppy data
+    periods = 200
+    base_price = 45000
+    
+    dates = [datetime.now() - timedelta(minutes=periods-i) for i in range(periods)]
+    
+    # Random walk with drift
+    np.random.seed(42)
+    returns = np.random.normal(0.0005, 0.002, periods)
+    price_curve = base_price * np.cumprod(1 + returns)
+    
+    data = []
+    for i in range(periods):
+        close = price_curve[i]
+        # Add some volatility for High/Low
+        high = close * (1 + abs(np.random.normal(0, 0.001)))
+        low = close * (1 - abs(np.random.normal(0, 0.001)))
+        open_p = close * (1 + np.random.normal(0, 0.001)) # Slight variation
+        
+        # Ensure High/Low envelop Open/Close
+        high = max(high, open_p, close)
+        low = min(low, open_p, close)
+        
+        data.append({
+            'time': dates[i].timestamp(),
+            'open': open_p,
+            'high': high,
+            'low': low,
+            'close': close,
+            'volume': np.random.randint(100, 1000)
+        })
+        
+    df = pd.DataFrame(data)
+    
+    # Calculate T3
+    t3 = TillsonT3.calculate(df, length=10, volume_factor=1.7)
+    df['t3'] = t3.fillna(0)
+    
+    # Calculate Signals
+    strat = BSniperStrategy(config={'t3_length': 10, 'volume_factor': 1.7})
+    signals = strat.generate_signals(df)
+    df['signal'] = signals
+    
+    # Transform to JSON structure
+    # Lightweight Charts expects unix timestamp (seconds)
+    chart_data = {
+        'candles': [],
+        't3': [],
+        'markers': []
+    }
+    
+    for i, row in df.iterrows():
+        t = row['time'] 
+        chart_data['candles'].append({
+            'time': t,
+            'open': row['open'],
+            'high': row['high'],
+            'low': row['low'],
+            'close': row['close']
+        })
+        
+        if row['t3'] != 0:
+            chart_data['t3'].append({
+                'time': t,
+                'value': row['t3']
+            })
+            
+        if row['signal'] == 1:
+            chart_data['markers'].append({
+                'time': t,
+                'position': 'belowBar',
+                'color': '#22c55e', # Green
+                'shape': 'arrowUp',
+                'text': 'B'
+            })
+            
+    return chart_data

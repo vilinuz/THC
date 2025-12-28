@@ -19,6 +19,24 @@ data_sources:
   yfinance:
     enabled: true
 
+# Data Ingestion Configuration
+data_ingestion:
+  enabled: true
+  redis_host: ${REDIS_HOST:localhost}
+  redis_port: 6379
+  postgres_dsn: postgres://user:pass@localhost:5432/trading
+  # Binance Credentials (Optional for public data, required for limits/private)
+  binance_api_key: ${BINANCE_API_KEY}
+  binance_api_secret: ${BINANCE_API_SECRET}
+  pairs: 
+    - BTC-USDT
+    - ETH-USDT
+    - SOL-USDT
+  futures_pairs:
+    - BTC-USDT-PERP
+    - ETH-USDT-PERP
+    - SOL-USDT-PERP
+
 # Database Configuration
 database:
   type: duckdb

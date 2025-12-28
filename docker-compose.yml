@@ -1,28 +1,71 @@
 version: '3.8'
 
 services:
+  # 1. Trading Bot (Strategy Engine)
   trading-bot:
     build: .
-    container_name: crypto-trading-bot
+    container_name: trading-bot
+    restart: unless-stopped
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_DSN=postgresql://postgres:postgres@postgres:5432/trading
+      - BINANCE_API_KEY=${BINANCE_API_KEY}
+      - BINANCE_API_SECRET=${BINANCE_API_SECRET}
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - trading-net
+    command: python main.py --mode daemon
+
+  # 2. Data Ingestion (CryptoFeed)
+  feed-manager:
+    build: .
+    container_name: trading-feed
     restart: unless-stopped
     environment:
       - REDIS_HOST=redis
       - REDIS_PORT=6379
+      - POSTGRES_DSN=postgresql://postgres:postgres@postgres:5432/trading
       - BINANCE_API_KEY=${BINANCE_API_KEY}
       - BINANCE_API_SECRET=${BINANCE_API_SECRET}
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
     volumes:
       - ./data:/app/data
       - ./logs:/app/logs
-      - ./reports:/app/reports
       - ./config.yaml:/app/config.yaml
     depends_on:
       - redis
-      - duckdb
+      - postgres
     networks:
-      - trading-network
-    command: python main.py --mode daemon
+      - trading-net
+    command: python -m data_ingestion.feed_manager
 
+  # 3. Dashboard (Web UI)
+  dashboard:
+    build: .
+    container_name: trading-dashboard
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      - REDIS_HOST=redis
+      - POSTGRES_DSN=postgresql://postgres:postgres@postgres:5432/trading
+    volumes:
+      - ./data:/app/data
+      - ./logs:/app/logs
+      - ./config.yaml:/app/config.yaml
+    depends_on:
+      - redis
+      - postgres
+    networks:
+      - trading-net
+    command: uvicorn dashboard.app:app --host 0.0.0.0 --port 8000 --reload
+
+  # 4. Infrastructure: Redis
   redis:
     image: redis:7-alpine
     container_name: trading-redis
@@ -32,41 +75,30 @@ services:
     volumes:
       - redis-data:/data
     networks:
-      - trading-network
+      - trading-net
     command: redis-server --appendonly yes
 
-  duckdb:
-    image: python:3.11-slim
-    container_name: trading-duckdb
+  # 5. Infrastructure: Postgres
+  postgres:
+    image: postgres:15-alpine
+    container_name: trading-postgres
     restart: unless-stopped
-    volumes:
-      - ./data:/data
-    networks:
-      - trading-network
-    command: tail -f /dev/null
-
-  dashboard:
-    build:
-      context: .
-      dockerfile: Dockerfile.dashboard
-    container_name: trading-dashboard
-    restart: unless-stopped
-    ports:
-      - "8050:8050"
     environment:
-      - REDIS_HOST=redis
-      - DATABASE_PATH=/data/market.duckdb
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=trading
+    ports:
+      - "5432:5432"
     volumes:
-      - ./data:/data
-    depends_on:
-      - redis
-      - trading-bot
+      - postgres-data:/var/lib/postgresql/data
     networks:
-      - trading-network
+      - trading-net
 
 volumes:
   redis-data:
+  postgres-data:
+
 
 networks:
-  trading-network:
+  trading-net:
     driver: bridge
