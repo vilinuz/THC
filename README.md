@@ -6,6 +6,14 @@ lysis, and comprehensive backtesting capabilities.
 ## 🚀 Features
 
 ### Core Capabilities
+- **Advanced Causal Strategy**: 
+  - **Leader-Follower Logic**: Uses Granger Causality to identify asset leadership (e.g., BTC leading ETH).
+  - **6-Phase Validation**: Leader Crash Veto, Projected Velocity, and Transfer Entropy Gates.
+  - **GMM Clustering**: Automatic volatility regime detection.
+- **Institutional-Grade Data**:
+  - **Real-Time Feed**: Powered by `cryptofeed` for L2 Book and Trade stream.
+  - **Order Book Imbalance (OBI)**: Detects institutional pressure.
+  - **Liquidation Tracking**: Instant crash detection via liquidation velocity.
 - **Multi-Source Data Fetching**: Binance, yfinance integration
 - **Advanced Technical Indicators**: VWAP, EMA (9, 21, 50, 200), RSI, Bollinger Bands, ATR, Ichimoku Cloud
 - **Smart Money Concepts**: Integration with smart-money-concepts library for Order Blocks, Fair Value Gaps, Liquidity
@@ -136,44 +144,25 @@ docker-compose up -d trading-bot
 
 ```
 crypto-trading-platform/
-├── data_fetchers/          # Data acquisition modules
+├── data_ingestion/         # [NEW] Real-time Feed Handler
+│   └── feed_manager.py     # Cryptofeed Integration (L2, Trades, Liq)
+├── data_fetchers/          # Historical Data modules
 │   ├── binance_fetcher.py
 │   └── yfinance_fetcher.py
 ├── indicators/             # Technical indicators
-│   ├── vwap.py
-│   ├── ema.py
-│   ├── rsi.py
-│   ├── ichimoku.py
 │   └── ...
-├── smart_money/            # Smart Money Concepts
-│   ├── order_blocks.py
-│   ├── liquidity.py
-│   └── fvg.py
-├── ml/                     # Machine learning models
+├── ml/                     # Machine learning & Causal Inference
+│   ├── causal_inference.py # [NEW] GMM, Granger, ETE, DTW Logic
 │   ├── feature_engineer.py
-│   ├── xgboost_model.py
-│   ├── lstm_model.py
-│   └── llm_analyzer.py
-├── optimization/           # Parameter optimization
-│   ├── bayesian_optimizer.py
-│   └── walk_forward.py
+│   └── ...
 ├── strategy/               # Trading strategies
-│   ├── scalping_strategy.py
-│   ├── ichimoku_strategy.py
-│   └── ensemble_strategy.py
+│   ├── multi_layer_strategy.py # [UPDATED] 6-Phase Causal Strategy
+│   └── ...
 ├── backtesting/            # Backtesting engine
-│   ├── backtest_engine.py
-│   └── performance_metrics.py
-├── signal/                 # Signal aggregation
-│   └── signal_aggregator.py
+│   └── ...
 ├── db/                     # DuckDB management
-│   └── duckdb_manager.py
 ├── cache/                  # Redis caching
-│   └── redis_manager.py
 ├── reporting/              # PDF generation
-│   └── pdf_generator.py
-├── daemon/                 # Service mode
-│   └── trading_daemon.py
 ├── utils/                  # Utilities
 ├── main.py                 # Main entry point
 └── config.yaml             # Configuration

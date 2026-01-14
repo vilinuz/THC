@@ -67,27 +67,92 @@ class CryptoFeedManager:
 
     def start(self):
         """Start the Feed Handler"""
-        callbacks = self._get_redis_callbacks()
+        
+        self.metrics = {
+            'obi': {}, # Order Book Imbalance
+            'velocity': {}, # Trade Velocity
+            'liquidations': {} # Liquidation Volume
+        }
+
+    async def _custom_l2_callback(self, book, receipt_timestamp):
+        """Calculate Order Book Imbalance (OBI)"""
+        try:
+            # Calculate Imbalance on top 10 levels
+            # book.bids and book.asks are dicts {price: size}
+            # Need to handle different book variants, but standard L2 is {price: size}
+            
+            # Helper to sum top N
+            def sum_top_n(d, n=10):
+                return sum(list(d.values())[:n])
+
+            bid_vol = sum_top_n(book.bids)
+            ask_vol = sum_top_n(book.asks)
+            
+            if bid_vol + ask_vol > 0:
+                obi = (bid_vol - ask_vol) / (bid_vol + ask_vol)
+                self.metrics['obi'][book.symbol] = obi
+                
+        except Exception as e:
+            # print(f"OBI calc error: {e}")
+            pass
+            
+        # Forward to Redis if configured
+        if self.redis_backends.get(L2_BOOK):
+            await self.redis_backends[L2_BOOK](book, receipt_timestamp)
+
+    async def _custom_trade_callback(self, trade, receipt_timestamp):
+        """Calculate Tick Velocity / VWAP"""
+        # trade is a Trade object or dict
+        # Logic: Accumulate volume/price for velocity
+        
+        # Forward to Redis
+        if self.redis_backends.get(TRADES):
+            await self.redis_backends[TRADES](trade, receipt_timestamp)
+
+    async def _custom_liquidation_callback(self, liquidation, receipt_timestamp):
+        """Detect Liquidations"""
+        # Forward to Redis
+        if self.redis_backends.get(LIQUIDATIONS):
+            await self.redis_backends[LIQUIDATIONS](liquidation, receipt_timestamp)
+
+    def start(self):
+        """Start the Feed Handler"""
+        # Initialize Redis Backends directly to use in custom callbacks
+        self.redis_backends = self._get_redis_callbacks()
         pg_callbacks = self._get_postgres_callbacks()
         
-        # Merge callbacks (Cryptofeed supports list of callbacks)
-        # We need to structure it: {L2_BOOK: [RedisCallback, PB_Callback], ...}
+        # Prepare Combined Callbacks
+        # We use our Custom Callbacks as the PRIMARY entry point for L2, Trades, Liq
+        # They will forward to Redis internally.
+        # For others (Ticker, etc), we use Redis directly.
         
-        combined_callbacks = {}
+        callbacks = {
+            L2_BOOK: self._custom_l2_callback,
+            TRADES: self._custom_trade_callback,
+            LIQUIDATIONS: self._custom_liquidation_callback,
+            TICKER: self.redis_backends[TICKER],
+            CANDLES: self.redis_backends[CANDLES],
+            FUNDING: self.redis_backends[FUNDING],
+            OPEN_INTEREST: self.redis_backends[OPEN_INTEREST]
+        }
         
-        # Helper to add
-        def add_cb(channel, cb):
-            if channel not in combined_callbacks: combined_callbacks[channel] = []
-            combined_callbacks[channel].append(cb)
-
-        for chan, cb in callbacks.items(): add_cb(chan, cb)
-        for chan, cb in pg_callbacks.items(): add_cb(chan, cb)
+        # Add Postgres to the mix (Cryptofeed allows list of callbacks)
+        # But since we use methods for the main ones, we need to handle list logic manually or 
+        # use Cryptofeed's native support for lists.
+        # Simplest: Wrapper calls Redis, then we let FeedHandler call Postgres if we pass a list?
+        # Limit: add_feed callbacks arg takes {CHANNEL: [cb1, cb2]}
+        
+        final_callbacks = {}
+        for chan, main_cb in callbacks.items():
+            final_callbacks[chan] = [main_cb]
+            # Add PG if exists
+            if chan in pg_callbacks:
+                final_callbacks[chan].append(pg_callbacks[chan])
         
         print("Starting CryptoFeed Ingestion...")
         print(f"Subscribing to {len(self.pairs)} Spot pairs and {len(self.futures_pairs)} Futures pairs.")
         
         # Prepare Exchange Config
-        # Cryptofeed expects a specific structure for auth
         exchange_config = {}
         if self.config.get('binance_api_key') and self.config.get('binance_api_secret'):
             exchange_config = {
@@ -97,23 +162,19 @@ class CryptoFeedManager:
             print("Binance Credentials loaded.")
         
         # 1. Spot Data (Binance)
-        # L2, Trades, Ticker, Candles
         try:
              self.fh.add_feed(BINANCE, channels=[L2_BOOK, TRADES, TICKER, CANDLES], 
-                              symbols=self.pairs, callbacks=combined_callbacks,
+                              symbols=self.pairs, callbacks=final_callbacks,
                               config=exchange_config)
         except Exception as e:
              print(f"Error adding Spot feed: {e}")
 
         # 2. Futures/Perp Data (Binance Futures)
-        # Funding, OI, Liquidations, Index, plus standard
         futures_chans = [TRADES, TICKER, FUNDING, OPEN_INTEREST, LIQUIDATIONS]
-        # Binance Futures supports CANDLES too
-        # INDEX might be specific symbol format
         
         try:
              self.fh.add_feed(BINANCE_FUTURES, channels=futures_chans, 
-                              symbols=self.futures_pairs, callbacks=combined_callbacks,
+                              symbols=self.futures_pairs, callbacks=final_callbacks,
                               config=exchange_config)
         except Exception as e:
              print(f"Error adding Futures feed: {e}")

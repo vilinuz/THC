@@ -58,43 +58,31 @@ This is a production-ready, modular cryptocurrency trading platform built with P
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                    Data Sources                          │
-│              Binance API  │  yfinance                    │
-└────────────────────┬────────────────────────────────────┘
-                     │
+│              Market Data (Cryptofeed)                    │
+│      L2 Book  │  Trades  │  Liquidations  │  OI          │
+└────────┬───────────┬─────────────┬─────────────┬────────┘
+         │           │             │             │
+         ↓           ↓             ↓             ↓
+┌──────────────────┐ ┌───────────┐ ┌───────────┐ ┌─────────┐
+│OrderBook Manager │ │Velocity   │ │Regime     │ │Causal   │
+│(OBI Calculation) │ │Engine     │ │Detector   │ │Gate     │
+└────────┬─────────┘ └─────┬─────┘ └─────┬─────┘ └────┬────┘
+         │                 │             │            │
+         └───────────┬─────┴─────────────┴────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────┐
-│                  Data Fetchers                           │
-│          (Async, Rate-Limited, Validated)                │
-└────────────────────┬────────────────────────────────────┘
-                     │
-          ┌──────────┴──────────┐
-          ↓                     ↓
-┌──────────────────┐   ┌──────────────────┐
-│  DuckDB + Parquet│   │   Redis Cache    │
-│  (Historical)    │   │   (Real-time)    │
-└────────┬─────────┘   └─────────┬────────┘
-         │                       │
-         └───────────┬───────────┘
-                     ↓
-┌─────────────────────────────────────────────────────────┐
-│              Technical Analysis Layer                    │
-│  Indicators  │  Smart Money  │  Feature Engineering     │
+│               Data Aggregation Layer                     │
+│        Redis Cache (Real-time Metric Storage)            │
 └────────────────────┬────────────────────────────────────┘
                      ↓
 ┌─────────────────────────────────────────────────────────┐
-│                ML/Signal Generation                      │
-│  XGBoost  │  LSTM  │  LLM  →  Signal Aggregator        │
-└────────────────────┬────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────────────┐
-│           Strategy & Optimization                        │
-│  Bayesian Opt  │  Walk-Forward  │  Trading Strategies   │
-└────────────────────┬────────────────────────────────────┘
-                     ↓
-┌─────────────────────────────────────────────────────────┐
-│              Execution & Analysis                        │
-│  Backtest Engine  │  Performance Metrics  │  Reports    │
+│                  Strategy Core                           │
+│     MultiLayerStrategy (6-Phase Validation)              │
+│  Phase 1: Dual-Regime Check (Crash Veto)                 │
+│  Phase 2: Signal Denoising (Kalman + Causal Velocity)    │
+│  Phase 3: Structure (SMC + OBI + FVG)                    │
+│  Phase 4: Tactical (ETE Gate + Momentum)                 │
+│  Phase 5: Volatility Sizing                              │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -173,28 +161,28 @@ docker run -d -p 6379:6379 redis:7-alpine
 
 ## Module Details
 
-### 1. Data Fetchers (`data_fetchers/`)
+### 1. Data Ingestion (`data_ingestion/`)
 
-**Purpose**: Fetch market data from exchanges
+**Purpose**: Real-time High-Frequency Data Pipeline
 
-**Key Files**:
-- `binance_fetcher.py`: Binance integration
-- `yfinance_fetcher.py`: Yahoo Finance fallback
-- `base_fetcher.py`: Abstract base class
+**Components**:
+- `feed_manager.py`: Manages `cryptofeed` connections (Websockets).
+- **L2 Book**: Stream updates to calculate Order Book Imbalance (OBI).
+- **Trades**: Tick-by-tick stream for VWAP and Kalman Velocity.
+- **Liquidations**: Real-time alert system for crash regimes.
 
 **Usage**:
 ```python
-from data_fetchers.binance_fetcher import BinanceFetcher
+from data_ingestion.feed_manager import CryptoFeedManager
 
-fetcher = BinanceFetcher(config)
-df = await fetcher.fetch_ohlcv('BTC/USDT', '1h', start_date)
+manager = CryptoFeedManager(config)
+manager.start() # Starts async event loop for Binance/Bybit
 ```
 
 **Features**:
-- Async data fetching
-- Rate limiting
-- Error handling
-- Data validation
+- **Zero-Lag**: Direct Websocket connection vs REST API polling.
+- **Metric Engine**: Calculates OBI and Velocity in-memory before caching to Redis.
+- **Resilience**: Auto-reconnect and error handling via `cryptofeed`.
 
 ---
 
@@ -228,33 +216,41 @@ rsi_signal = RSI.signal(rsi, overbought=70, oversold=30)
 
 ---
 
-### 3. Smart Money Concepts (`smart_money/`)
+### 3. Causal Strategy & Smart Money (`strategy/multi_layer_strategy.py`)
 
-**Purpose**: Advanced institutional trading concepts
+**Purpose**: Institutional-Grade Directional Trading
 
-**Integration**:
+**Key Components**:
+
+#### Phase 1: Dual-Regime Check (Crash Veto)
+- **Logic**: If the "Leader" asset (e.g., BTC) is in a Crash Regime (HMM State 2), all "Follower" trades (e.g., ETH) are VETOED.
+- **Metric**: Liquidation Velocity > 3-Sigma event.
+
+#### Phase 2: Signal Denoising (Projected Velocity)
+- **Logic**: Uses Granger Causality to define `Optimal Lag` ($\tau$).
+- **Action**: Projects Leader's velocity forward by $\tau$. If it contradicts Follower's current velocity, the signal is ignored as a "Fakeout".
+
+#### Phase 3: Structure Layer (SMC + OBI)
+- **Data**: L2 Book Imbalance (OBI).
+- **Logic**: 
+  - `OBI > 0.3` (Strong Bids) at FVG Support -> **High Probability Long**.
+  - `OBI < -0.3` (Strong Asks) at FVG Resistance -> **High Probability Short**.
+
+#### Phase 4: Tactical Layer (ETE Gate)
+- **Logic**: Calculates **Symbolic Transfer Entropy (STE)**.
+- **Action**: Trades are only allowed if Information Flow from Leader -> Follower is rising (Coupling Strength is high).
+
+#### Integration:
 ```python
-from smartmoneyconcepts import smc
+from strategy.multi_layer_strategy import MultiLayerStrategy, CausalContext
 
-# Prepare data (lowercase columns required)
-df_prepared = df.rename(columns=str.lower)
+# Inject Leader Context
+ctx = CausalContext(leader_df=btc_df, optimal_lag=5, ete_rising=True)
+strategy.set_leader_context(ctx)
 
-# Detect order blocks
-order_blocks = smc.ob(df_prepared)
-
-# Fair value gaps
-fvg = smc.fvg(df_prepared)
-
-# Liquidity zones
-liquidity = smc.liquidity(df_prepared)
+# Generate Signal
+signal = strategy.generate_signals(eth_df)
 ```
-
-**Concepts Implemented**:
-- Order Blocks (OB)
-- Fair Value Gaps (FVG)
-- Liquidity Sweeps
-- Break of Structure (BOS)
-- Change of Character (ChoCH)
 
 ---
 

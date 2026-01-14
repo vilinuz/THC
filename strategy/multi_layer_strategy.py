@@ -46,6 +46,12 @@ except ImportError:
     SMC_AVAILABLE = False
     print("Warning: SMC modules not found. Smart Money analysis will be disabled.")
 
+try:
+    from ml.causal_inference import CausalVolatilityTrading
+except ImportError:
+    CausalVolatilityTrading = None
+    print("Warning: CausalVolatilityTrading not found.")
+
 
 @dataclass
 class RegimeState:
@@ -106,6 +112,16 @@ class SMCState:
     market_trend: int  # 1 = bullish, -1 = bearish, 0 = ranging
     near_bullish_fvg: bool  # Price near a bullish FVG (potential long entry)
     near_bearish_fvg: bool  # Price near a bearish FVG (potential short entry)
+
+
+@dataclass
+class CausalContext:
+    """Encapsulates Leader-Follower causal information."""
+    leader_df: pd.DataFrame
+    optimal_lag: int
+    ete_rising: bool = True
+    leader_name: str = "Unknown"
+    is_valid: bool = False
 
 
 class MarkovRegimeClassifier:
@@ -383,10 +399,17 @@ class MultiLayerStrategy(BaseStrategy):
     Phase 5: Volatility Sizing (ATR)
     - Stop Loss: Kalman_Price - (2 * ATR) for longs
     - Position Size: Account_Risk% / ATR
+    
+    Phase 6: Causal Augmentation (Ivan Lettery)
+    - Checks Leader asset regime (Dual-Regime)
+    - Projects Leader velocity (Signal Denoising)
+    - Checks Transfer Entropy (Information Flow Gate)
     """
     
     def __init__(self, config: Dict = None):
         super().__init__(config or {})
+        
+        self.causal_context: Optional[CausalContext] = None
         
         # Phase 1: HMM Configuration
         self.stable_trend_threshold = self.config.get('stable_trend_threshold', 0.6)
@@ -455,6 +478,10 @@ class MultiLayerStrategy(BaseStrategy):
         self._last_kalman: Optional[KalmanState] = None
         self._last_kama: Optional[KAMAState] = None
         self._last_smc: Optional[SMCState] = None
+        
+    def set_leader_context(self, context: CausalContext) -> None:
+        """Set the causal leader context for the next signal generation."""
+        self.causal_context = context
     
     def train(self, df: pd.DataFrame) -> None:
         """
@@ -480,6 +507,22 @@ class MultiLayerStrategy(BaseStrategy):
             crash_threshold=self.crash_threshold
         )
         self._last_regime = regime
+        
+        # === CAUSAL AUGMENTATION: DUAL-REGIME CHECK ===
+        # If we have a valid leader context, check if the Leader is crashing.
+        # If Leader is in State 2 (Crash), we override and block trading.
+        if self.causal_context and self.causal_context.is_valid and self.causal_context.leader_df is not None:
+             leader_regime_state = self.regime_classifier.classify(
+                self.causal_context.leader_df.tail(self.hmm_lookback),
+                stable_threshold=self.stable_trend_threshold,
+                crash_threshold=self.crash_threshold
+            )
+             # If Leader is crashing, we are crashing (Lead-Lag effect)
+             if leader_regime_state.is_crash:
+                 print(f"Refusing trade: Leader {self.causal_context.leader_name} is in Crash Regime.")
+                 regime.is_tradeable = False
+                 regime.is_crash = True # Force crash logic
+                 
         return regime
     
     def _phase2_kalman(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -488,6 +531,42 @@ class MultiLayerStrategy(BaseStrategy):
         Returns DataFrame with kalman_price, kalman_velocity, trend_direction.
         """
         kalman_df = self.kalman_filter.process_series(df['close'])
+        
+        # === CAUSAL AUGMENTATION: PROJECTED VELOCITY ===
+        # Project Leader's velocity onto Follower using Optimal Lag.
+        # If Projected Velocity direction opposes Follower's Kalman direction, VETO the signal.
+        if self.causal_context and self.causal_context.is_valid:
+            try:
+                lag = self.causal_context.optimal_lag
+                leader_close = self.causal_context.leader_df['close']
+                
+                # Get Leader's Kalman states
+                leader_kalman = self.kalman_filter.process_series(leader_close)
+                
+                # Projected velocity at time t is Leader's velocity at time t-lag
+                projected_velocity = leader_kalman['kalman_velocity'].shift(lag)
+                
+                # Add to dataframe for inspection
+                kalman_df['projected_velocity'] = projected_velocity
+                
+                # Logic: If Follower says UP but Projected says DOWN (significant), downgrade/veto
+                # We'll augment the 'trend_direction' column
+                # Only apply if aligned with current index (which it is via assignment)
+                
+                # Check alignment of signs
+                follower_vel = kalman_df['kalman_velocity']
+                
+                # Divergence: Follower Up vs Leader Projected Down
+                divergence_mask = (follower_vel > 0) & (projected_velocity < -0.001)
+                kalman_df.loc[divergence_mask, 'trend_direction'] = 'neutral' # Veto
+                
+                # Divergence: Follower Down vs Leader Projected Up
+                divergence_mask_2 = (follower_vel < 0) & (projected_velocity > 0.001)
+                kalman_df.loc[divergence_mask_2, 'trend_direction'] = 'neutral' # Veto
+                
+            except Exception as e:
+                print(f"Causal velocity projection error: {e}")
+                
         return kalman_df
     
     def _phase2_kama(self, df: pd.DataFrame) -> pd.DataFrame:
@@ -718,6 +797,16 @@ class MultiLayerStrategy(BaseStrategy):
         # 3. Consolidation (ADX < 20): BLOCKED unless Climax or Strong Dip exception
         
         entry_allowed = is_trend_regime | is_chop_regime | is_climax | is_strong_dip
+
+        # === CAUSAL AUGMENTATION: TRANSFER ENTROPY GATE ===
+        # Only allow entry if Effective Transfer Entropy is rising/high (Information is flowing).
+        # We assume `ete_rising` boolean in context captures this check (calculated externally or simply checked here).
+        if self.causal_context and self.causal_context.is_valid:
+            if not self.causal_context.ete_rising:
+                # ETE Gate closed: Information flow suggests decoupling or noise
+                # But we allow Climax/Strong Dip exceptions to override this (panic is panic)
+                # Vectorized operation: Filter to only allow if exception logic holds
+                entry_allowed = entry_allowed & (is_climax | is_strong_dip)
         
         # Momentum check (Aroon)
         has_up_momentum = aroon['aroon_up'] > self.aroon_threshold
