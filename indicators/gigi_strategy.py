@@ -263,7 +263,7 @@ class GigiStrategy:
                         wick_atr_ok = (not self.use_sell_wick_atr_floor) | (s_upper >= s_atr * self.min_upper_wick_atr_mult)
                         wick_ok = wick_ratio_ok and wick_atr_ok
                         
-                        # RSI
+                        # RSI indicator
                         rsi_thresh = self.sell_rsi_soft_level if in_long else self.rsi_sell_level
                         rsi_ok = rsis[j] >= rsi_thresh
                         
