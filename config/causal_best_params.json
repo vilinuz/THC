@@ -1,0 +1,11 @@
+{
+    "kama_period": 25,
+    "kama_fast": 2,
+    "kama_slow": 30,
+    "adx_threshold": 20,
+    "aroon_threshold": 60,
+    "atr_stop_multiplier": 2.0,
+    "rsi_period": 11,
+    "use_fisher_timing": true,
+    "use_smc": false
+}
