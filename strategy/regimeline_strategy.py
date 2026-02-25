@@ -73,6 +73,7 @@ class RegimelineState:
     ra_dl_bar: int = -1
     ra_struct_snap_ok: bool = False
     ra_bal_snap_ok: bool = False
+    ra_disc_recent: bool = False
     
     # --- Range-B (Re-Anchor) ---
     rb_pending: bool = False
@@ -554,7 +555,7 @@ class RegimelineStrategy(BaseStrategy):
                                 (c_close < c_open) and \
                                 (body_pct[i] >= self.bear_min_body_pct) and \
                                 (c_close < break_lb) and \
-                                (c_close_loc <= self.bear_close_near_low)
+                                (close_loc[i] <= self.bear_close_near_low)
                     
                     if breakdown:
                         signal_generated = -1
@@ -693,4 +694,14 @@ class RegimelineStrategy(BaseStrategy):
                     s.pos_tag = ""
                     s.bull_tp1_done = False
 
+
         return pd.Series(signals, index=df.index)
+
+    def calculate_position_size(
+        self, signal: int, price: float, portfolio_value: float, risk_params: Dict
+    ) -> float:
+        """Calculate position size based on signal and risk parameters"""
+        risk_per_trade = risk_params.get("risk_per_trade", 0.01)
+        # Simplified position sizing
+        pos_size = (portfolio_value * risk_per_trade) / price
+        return pos_size

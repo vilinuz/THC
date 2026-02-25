@@ -90,6 +90,26 @@ class BacktestEngine:
                     cash += position * current_price + pnl
                     position = 0
 
+                # Open short
+                position_value = cash * 0.95
+                position = -(position_value / current_price)
+                # For shorting in this simple engine, we assume simplistic handling:
+                # Cash stays same (collateral), we verify equity later.
+                # Actually, standard logic for simplistic backtester:
+                # Cash -= (Initial Margin of Short).
+                # Let's assume 1x leverage short -> "sell" borrows asset.
+                # Just mimic the logic:
+                # Cost is commission.
+                cash -= abs(position) * current_price * self.commission
+                
+                trades.append({
+                    "entry_idx": i,
+                    "entry_time": df.index[i],
+                    "entry_price": current_price,
+                    "side": "short",
+                    "size": position,
+                })
+
             # Update portfolio value
             portfolio_value = cash + abs(position) * current_price
             equity_curve.append(

@@ -102,7 +102,10 @@ class BinanceHistoryFetcher:
                     )
 
             # 5. Transform
-            # 5. Transform
+            if df.empty:
+                logger.warning(f"Empty DataFrame for {symbol} {year}-{month}")
+                return
+
             # Auto-detect timestamp unit
             # 2024 in ms ~ 1.7e12
             # 2024 in us ~ 1.7e15
@@ -133,6 +136,27 @@ class BinanceHistoryFetcher:
             # But here we might want to close if it's a script run.
             pass
 
+    def download_range(self, symbol: str, start_date: str, end_date: str):
+        """
+        Download data for a range of dates.
+        """
+        start = pd.to_datetime(start_date)
+        end = pd.to_datetime(end_date)
+        
+        current = start.replace(day=1)
+        while current <= end:
+            year = str(current.year)
+            month = f"{current.month:02d}"
+            
+            logger.info(f"Processing {symbol} for {year}-{month}")
+            self.download_and_ingest(symbol, year, month)
+            
+            # Next month
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+        
     def close(self):
         self.db_manager.close()
 
@@ -144,14 +168,21 @@ def main():
     parser.add_argument(
         "--symbol", type=str, default="BTCUSDT", help="Trading Pair Symbol"
     )
-    parser.add_argument("--year", type=str, required=True, help="Year (YYYY)")
-    parser.add_argument("--month", type=str, required=True, help="Month (MM)")
+    parser.add_argument("--year", type=str, help="Year (YYYY)")
+    parser.add_argument("--month", type=str, help="Month (MM)")
+    parser.add_argument("--start_date", type=str, help="Start Date (YYYY-MM-DD)")
+    parser.add_argument("--end_date", type=str, help="End Date (YYYY-MM-DD)")
 
     args = parser.parse_args()
 
     fetcher = BinanceHistoryFetcher()
     try:
-        fetcher.download_and_ingest(args.symbol, args.year, args.month)
+        if args.start_date and args.end_date:
+            fetcher.download_range(args.symbol, args.start_date, args.end_date)
+        elif args.year and args.month:
+            fetcher.download_and_ingest(args.symbol, args.year, args.month)
+        else:
+            print("Please provide --year and --month OR --start_date and --end_date")
     finally:
         fetcher.close()
 

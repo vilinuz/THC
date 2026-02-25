@@ -599,6 +599,7 @@ class MultiLayerStrategy(BaseStrategy):
             measurement_noise=self.kalman_measurement_noise,
         )
 
+        self.smc_wrapper = None
         if self.use_smc and SMCWrapper is not None:
             self.smc_wrapper = SMCWrapper(use_library=False)
 
