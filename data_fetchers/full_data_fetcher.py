@@ -75,20 +75,31 @@ class BinanceHistoryFetcher:
 
         logger.info(f"Downloading {url}...")
 
-        # 3. Download
+        # 3. Download to temp file
+        import tempfile
+        import os
+        
         try:
-            response = requests.get(url, stream=True, timeout=30)
-            if response.status_code != 200:
-                logger.error(f"Failed to download. Status Code: {response.status_code}")
-                return
-
+            with tempfile.NamedTemporaryFile(delete=False, suffix='.zip') as temp_zip:
+                temp_zip_path = temp_zip.name
+                
+                response = requests.get(url, stream=True, timeout=30)
+                if response.status_code != 200:
+                    logger.error(f"Failed to download. Status Code: {response.status_code}")
+                    os.unlink(temp_zip_path)
+                    return
+                
+                for chunk in response.iter_content(chunk_size=8192):
+                    if chunk:
+                        temp_zip.write(chunk)
+            
             # 4. Extract and Process
-            logger.info("Download complete. Extracting and parsing...")
-            with zipfile.ZipFile(io.BytesIO(response.content)) as z:
+            logger.info("Download complete. Extracting and parsing from disk...")
+            with zipfile.ZipFile(temp_zip_path) as z:
                 csv_name = z.namelist()[0]
                 with z.open(csv_name) as csv_file:
                     # Binance CSVs: id, price, qty, quote_qty, time, is_buyer_maker, is_best_match
-                    df = pd.read_csv(
+                    chunk_iter = pd.read_csv(
                         csv_file,
                         names=[
                             "trade_id",
@@ -99,32 +110,44 @@ class BinanceHistoryFetcher:
                             "is_buyer_maker",
                             "is_best_match",
                         ],
+                        chunksize=1_000_000,
                     )
 
-            # 5. Transform
-            if df.empty:
-                logger.warning(f"Empty DataFrame for {symbol} {year}-{month}")
+                    is_first_chunk = True
+                    total_rows = 0
+
+                    for chunk in chunk_iter:
+                        if chunk.empty:
+                            continue
+
+                        # 5. Transform
+                        first_ts = chunk["time"].iloc[0]
+                        if first_ts > 1e14:
+                            unit = "us"
+                        else:
+                            unit = "ms"
+
+                        chunk["time"] = pd.to_datetime(chunk["time"], unit=unit)
+
+                        # 6. Save to DB
+                        logger.info(f"Ingesting {len(chunk)} trades chunk into DuckDB...")
+                        self.db_manager.save_market_trades(
+                            chunk, symbol, year_int, month_int, append_only=not is_first_chunk
+                        )
+                        
+                        total_rows += len(chunk)
+                        is_first_chunk = False
+
+            if total_rows == 0:
+                logger.warning(f"Empty Data for {symbol} {year}-{month}")
+                os.unlink(temp_zip_path)
                 return
 
-            # Auto-detect timestamp unit
-            # 2024 in ms ~ 1.7e12
-            # 2024 in us ~ 1.7e15
-            first_ts = df["time"].iloc[0]
-            if first_ts > 1e14:
-                unit = "us"
-            else:
-                unit = "ms"
-
-            df["time"] = pd.to_datetime(df["time"], unit=unit)
-
-            # 6. Save to DB
-            logger.info(f"Ingesting {len(df)} trades into DuckDB...")
-            self.db_manager.save_market_trades(df, symbol, year_int, month_int)
             self.db_manager.log_ingestion_status(
                 symbol, year_int, month_int, "COMPLETED"
             )
 
-            logger.info(f"Successfully ingested {symbol} {year}-{month}")
+            logger.info(f"Successfully ingested {total_rows} total trades for {symbol} {year}-{month}")
 
         except Exception as e:
             logger.error(f"Error processing {symbol} {year}-{month}: {e}")
@@ -132,9 +155,8 @@ class BinanceHistoryFetcher:
                 symbol, year_int, month_int, f"FAILED: {str(e)}"
             )
         finally:
-            # Check for close? DuckDBManager has close(), but usually fine to keep open if class persists.
-            # But here we might want to close if it's a script run.
-            pass
+            if 'temp_zip_path' in locals() and os.path.exists(temp_zip_path):
+                os.unlink(temp_zip_path)
 
     def download_range(self, symbol: str, start_date: str, end_date: str):
         """

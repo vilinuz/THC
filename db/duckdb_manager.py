@@ -219,7 +219,7 @@ class DuckDBManager:
             [symbol, year, month, status],
         )
 
-    def save_market_trades(self, df: pd.DataFrame, symbol: str, year: int, month: int):
+    def save_market_trades(self, df: pd.DataFrame, symbol: str, year: int, month: int, append_only: bool = False):
         """Save bulk market trades to DuckDB"""
         # Ensure DataFrame has correct columns and types
         df_copy = df.copy()
@@ -233,10 +233,11 @@ class DuckDBManager:
         # Given we check ingestion log, a re-run usually implies a retry or force update.
         # Let's delete existing for this month/symbol first to avoid dups if re-running.
 
-        self.conn.execute(
-            "DELETE FROM market_trades WHERE symbol = ? AND year = ? AND month = ?",
-            [symbol, year, month],
-        )
+        if not append_only:
+            self.conn.execute(
+                "DELETE FROM market_trades WHERE symbol = ? AND year = ? AND month = ?",
+                [symbol, year, month],
+            )
 
         # Use DuckDB's efficient appending from Pandas
         self.conn.register("temp_df", df_copy)
