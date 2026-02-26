@@ -6,26 +6,29 @@ lysis, and comprehensive backtesting capabilities.
 ## 🚀 Features
 
 ### Core Capabilities
-- **Advanced Causal Strategy**: 
+- **Advanced Causal Strategy (V6/Regimeline)**: 
   - **Leader-Follower Logic**: Uses Granger Causality to identify asset leadership (e.g., BTC leading ETH).
   - **6-Phase Validation**: Leader Crash Veto, Projected Velocity, and Transfer Entropy Gates.
   - **GMM Clustering**: Automatic volatility regime detection.
+- **Hybrid Adaptive Strategies (Alpha, Beta, Gamma)**:
+  - **Strategy Alpha**: Microstructural Price Resonance using ML Order Book Imbalance (MLOFI) and DeepLOB integrations.
+  - **Strategy Beta**: HMM-Gated Volatility Arbitrage dynamically allocating capital between Breakout (Trending) and Mean-Reversion (Choppy) sub-strategies.
+  - **Strategy Gamma**: Deterministic Indicator-Fused logic utilizing ADX, Choppiness Index, Tillson T3 DEMAs, and Fisher Transform.
 - **Institutional-Grade Data**:
   - **Real-Time Feed**: Powered by `cryptofeed` for L2 Book and Trade stream.
   - **Order Book Imbalance (OBI)**: Detects institutional pressure.
   - **Liquidation Tracking**: Instant crash detection via liquidation velocity.
-- **Multi-Source Data Fetching**: Binance, yfinance integration
-- **Advanced Technical Indicators**: VWAP, EMA (9, 21, 50, 200), RSI, Bollinger Bands, ATR, Ichimoku Cloud
+- **Multi-Source Data Fetching**: Binance Vision, real-time Websockets, yfinance integration
+- **Advanced Technical Indicators**: Tillson T3, Fisher Transform, Choppiness Index, ADX, VWAP, EMA, RSI, Bollinger Bands, ATR, Ichimoku Cloud
 - **Smart Money Concepts**: Integration with smart-money-concepts library for Order Blocks, Fair Value Gaps, Liquidity
 - **Machine Learning Models**: 
   - XGBoost for price prediction
-  - LSTM for sequence modeling
-  - LLM integration for sentiment analysis (optional)
-- **Feature Engineering**: Comprehensive feature creation from price, volume, technical indicators, and time data
-- **Optimization**:
-  - Bayesian Optimization for parameter tuning
-  - Walk-Forward Analysis to prevent overfitting
-  - Time-series cross-validation
+  - LSTM-GARCH for sequence modeling and volatility forecasting
+  - HMM (Hidden Markov Models) for continuous Regime Inference
+- **Optimization & Robustness**:
+  - **Walk-Forward Optimization (WFO)**: Professional cross-validation ensuring strategies perform entirely out-of-sample before deployment.
+  - **Simulated Annealing**: Advanced metaheuristic optimization to navigate complex, non-convex strategy parameter spaces and avoid local optima.
+  - Bayesian Optimization for parameter tuning.
 - **Professional Backtesting**: Realistic simulation with commission, slippage, and risk management
 - **Signal Aggregation**: Multiple signal sources with configurable weights
 - **Database Storage**: DuckDB + Parquet for efficient data management
@@ -144,7 +147,7 @@ docker-compose up -d trading-bot
 
 ```
 crypto-trading-platform/
-├── data_ingestion/         # [NEW] Real-time Feed Handler
+├── data_ingestion/         # Real-time Feed Handler
 │   └── feed_manager.py     # Cryptofeed Integration (L2, Trades, Liq)
 ├── data_fetchers/          # Historical Data modules
 │   ├── binance_fetcher.py
@@ -152,14 +155,21 @@ crypto-trading-platform/
 ├── indicators/             # Technical indicators
 │   └── ...
 ├── ml/                     # Machine learning & Causal Inference
-│   ├── causal_inference.py # [NEW] GMM, Granger, ETE, DTW Logic
+│   ├── causal_inference.py 
 │   ├── feature_engineer.py
 │   └── ...
 ├── strategy/               # Trading strategies
-│   ├── multi_layer_strategy.py # [UPDATED] 6-Phase Causal Strategy
-│   └── ...
+│   ├── regimeline_strategy.py  # Advanced V6 Causal Regimeline
+│   ├── strategy_alpha.py       # Microstructural Resonance
+│   ├── strategy_beta.py        # HMM-Gated Volatility Arbitrage
+│   └── strategy_gamma.py       # Deterministic Indicator-Fused
 ├── backtesting/            # Backtesting engine
+│   ├── wfo_engine.py       # Walk-Forward Optimization & SA Framework
 │   └── ...
+├── scripts/                # Execution Scripts
+│   ├── run_sa_wfo.py       # WFO execution using Simulated Annealing
+│   ├── run_gamma_wfo.py    # WFO specifically for Strategy Gamma
+│   └── run_comparative_wfo.py # Multi-strategy WFO comparison matrix
 ├── db/                     # DuckDB management
 ├── cache/                  # Redis caching
 ├── reporting/              # PDF generation
