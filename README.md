@@ -1,4 +1,4 @@
-# Crypto Trading Platform
+# Trade Horizon Collective (THC)
 
 A fully functional, modular cryptocurrency trading platform built with Python, featuring advanced technical indicators, machine learning models, Bayesian optimization, walk-forward ana
 lysis, and comprehensive backtesting capabilities.
